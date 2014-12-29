@@ -358,7 +358,7 @@ CH_IRQ_HANDLER(SAM3XA_USART3_HANDLER) {
  */
 static void notifySD5(GenericQueue *qp) {
   (void)qp;
-  USART3->US_IER = US_IER_TXRDY;
+  USART3->US_IER |= US_IER_TXRDY;
 }
 #endif /* SAM3XA_SERIAL_USE_USART3 */
 

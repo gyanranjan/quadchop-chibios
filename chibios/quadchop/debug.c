@@ -5,11 +5,21 @@
 #include "pal.h"
 #include <serial.h>
 #include <chprintf.h>
+//#include <stdio.h>
 #include <stdarg.h>
+//#include <strings.h>
 #include "debug.h"
 
+
+char *level_name[DEBUG_MAX] = {
+"info",
+"warn",
+"error",
+}; 
+
+
 static SerialConfig  serial3;
-static BaseSequentialStream *chp = (BaseSequentialStream *)&SD5;
+BaseSequentialStream *stream = (BaseSequentialStream *)&SD5;
 char printbuff[80];
 
 void
@@ -30,41 +40,35 @@ quad_debug_init()
 	sdStart(&SD5, &serial3);
 }
 
-
-uint32_t 
-quad_debug(int level, const char *format, ...)
-{
-    char *level_name;
-    va_list args;
-    bzero(printbuff,sizeof(printbuff));
-    
-    va_start(args, format);
-    vsnprintf(printbuff, sizeof(printbuff), format, args);
-    va_end(args);
-    if( level >= DEBUG_LEVEL ) {
-        if (level == DEBUG_INFO) {
-            level_name = "info:";
-        } else if (level == DEBUG_WARN) {
-           level_name = "warn:";
-        } else {
-            level_name = "err:";
-        }
-        chprintf(chp, "%s:%ld:",level_name, chTimeNow());
-        chprintf(chp, "%s\n\r", printbuff);
-    }
-    return 0;
-}
-
-quad_get_cmd() 
-{
-
-}
-
-// int
-// serial_getc()
+// uint32_t 
+// quad_debug(int level, const char *format, ...)
 // {
-	// if (Serial3.available() > 0) {
-		// return Serial3.read();
-	// }
-	// return 0;
+    // char *level_name;
+    // va_list args;
+    // //chprintf(chp, "debug");
+    // //return 0;
+    // //bzero(printbuff,sizeof(printbuff));
+    
+    // // va_start(args, format);
+    // // vsnprintf(printbuff, sizeof(printbuff), format, args);
+    // // va_end(args);
+    // if( level >= DEBUG_LEVEL ) {
+        // if (level == DEBUG_INFO) {
+            // level_name = "info:";
+        // } else if (level == DEBUG_WARN) {
+           // level_name = "warn:";
+        // } else {
+            // level_name = "err:";
+        // }
+        // //chprintf(chp, "%s:%ld:",level_name, chTimeNow());
+        // //chprintf(chp, "%s\n\r", printbuff);
+        // chprintf(chp, "hello\n\r");
+    // }
+    // return 0;
 // }
+uint32_t
+quad_serial_fetch_cmd() 
+{
+    return sdGet(&SD5);
+}
+

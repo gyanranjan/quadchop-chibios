@@ -1,0 +1,7 @@
+DECLARE_CMD(CMD_NONE        , ' '  , "No Command"),
+DECLARE_CMD(CMD_INC_THROTTLE, 'a' , "Increase Throttle"),
+DECLARE_CMD(CMD_DEC_THROTTLE, 'b' , "Decrease Throttle"),
+DECLARE_CMD(CMD_ARM         , 'c' , "Arm the system"   ),
+DECLARE_CMD(CMD_DISARM      , 'd' , "Disarm the system"),
+DECLARE_CMD(CMD_TEST        , 'r' , "Tests the command queue"),
+DECLARE_CMD(CMD_MAX         , '#' , "Limit MAX"),
