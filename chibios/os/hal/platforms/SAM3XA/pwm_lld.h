@@ -321,6 +321,7 @@ extern "C" {
                               pwmchannel_t channel,
                               pwmcnt_t width);
   void pwm_lld_disable_channel(PWMDriver *pwmp, pwmchannel_t channel);
+  void pwm_lld_set_dutycycle( PWMDriver *pwmp, uint16_t duty /*us*/);
 #ifdef __cplusplus
 }
 #endif
