@@ -14,8 +14,6 @@ extern BaseSequentialStream *stream;
 #define quad_debug(level, ...) { if ((level >= DEBUG_LEVEL) &&  (level < DEBUG_MAX) ) {\
                                  chprintf(stream,"%s:%d:",level_name[level] , chTimeNow());\
                                  chprintf(stream,__VA_ARGS__);}}
-
-//uint32_t quad_debug(int level, const char *format, ...);
 void quad_debug_init(void) ;
 uint32_t quad_serial_fetch_cmd(void);
 #endif

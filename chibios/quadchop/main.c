@@ -3,79 +3,35 @@
 #include "pal.h"
 #include "debug.h"
 #include "command.h"
+#include "i2c.h"
+#include "i2c_local.h"
 
 
-PWMConfig      pwm_ch0_cfg;
+//PWMConfig      pwm_ch0_cfg;
 #define FIXED_FREQUENCY (1000000)
 #define MIN_ESC         (700)
 #define MAX_ESC         (2400)
 #define INC_ESC         (50  )
 
 
-static WORKING_AREA(waThread1, 256);
-int throttle_val = MIN_ESC;
-
-
-void
-esc_configure()
-{
-    pwm_ch0_cfg.frequency              = FIXED_FREQUENCY ;
-    pwm_ch0_cfg.period                 = MAX_ESC    ;
-    pwm_ch0_cfg.callback               = NULL            ; 
-    pwm_ch0_cfg.channels[0].mode       = PWM_CHANNEL_POLARITY_HIGH;
-    pwm_ch0_cfg.channels[0].h_pin.port = PIOC;
-    pwm_ch0_cfg.channels[0].h_pin.pin  = 3;
-    pwm_ch0_cfg.channels[0].h_pin.mode = PIO_MODE_B;
-    pwm_ch0_cfg.channels[0].l_pin.port = PIOC;
-    pwm_ch0_cfg.channels[0].l_pin.pin  = 2;
-    pwm_ch0_cfg.channels[0].l_pin.mode = PIO_MODE_B;
-    
-    pwmStart(&PWMD1, &pwm_ch0_cfg);
-}
-
-void
-esc_set_throttle(uint16_t duty )
-{
-    pwm_lld_set_dutycycle( &PWMD1, duty);
-}
-
-static msg_t Thread1(void *arg) {
-    (void)arg;
-    quad_command_t cmd;
-    while (TRUE) {
-        quad_cmd_collector();
-        quad_cmd_get(&cmd);
-        if (cmd == CMD_INC_THROTTLE) {
-        quad_debug(DEBUG_WARN , "CMD_INC_THROTTLE %d  \n\r", throttle_val);
-            throttle_val += INC_ESC;
-            if (throttle_val > MAX_ESC) {
-                throttle_val = MAX_ESC;
-                esc_set_throttle(throttle_val);
-            }
-        } else if (cmd == CMD_DEC_THROTTLE) {
-         quad_debug(DEBUG_WARN , "CMD_DEC_THROTTLE %d  \n\r", throttle_val);
-            throttle_val -= INC_ESC;
-            if (throttle_val < MIN_ESC ) {
-                throttle_val = MIN_ESC;
-                esc_set_throttle(throttle_val);
-            }
-        } else if (cmd == CMD_ARM) {
-            quad_debug(DEBUG_WARN , "Armed  \n\r");
-            //esc_arm_g();
-        } else if (cmd == CMD_TOP) {
-            throttle_val = MAX_ESC;
-            esc_set_throttle(throttle_val);
-            quad_debug(DEBUG_WARN , "Top  %d\n\r", throttle_val);
-        } else if (cmd == CMD_DOWN) {
-            throttle_val = MIN_ESC;
-            esc_set_throttle(MIN_ESC);
-            quad_debug(DEBUG_WARN , "Down  %d\n\r", throttle_val);
-        }
-    }
+//------------------------------------
+//  Heart beat disaplay  blinks an LED
+//------------------------------------
+static WORKING_AREA(waHB, 64);
+static msg_t HBTh(void *arg) {
+	(void)arg;
+	palSetPadMode(IOPORT3, 30, PAL_MODE_OUTPUT_PUSHPULL);
+	while (TRUE) {
+		palTogglePad(IOPORT3, 30);
+		chThdSleepMilliseconds(1000);
+	}
 	return 0;
 }
 
 
+//------------------------------------
+//  Watchdog disable
+//------------------------------------
 static 
 void disable_wdt(void)
 {
@@ -84,6 +40,40 @@ void disable_wdt(void)
 }
 
 
+
+
+static WORKING_AREA(i2Test, 256);
+static msg_t i2c(void *arg) {
+    int i;
+    uint8_t  send[8];
+    uint8_t  addr[2] = {0x68, 0x1e};
+    i2c_twi1_init();
+    int ret;
+    int device = 0;
+    quad_debug(DEBUG_WARN , "twi init done\n\r");
+    
+    while(1)  {
+        for (i=1; i<127; i++){
+            device = addr[i%2];
+            ret = i2c_read(device,send, 7);
+            quad_debug(DEBUG_WARN , "Device %x %s \n\r", device , ret == I2C_ALL_OK ? "Found":"Not Found");
+            
+            if (ret == I2C_ALL_OK) {
+                quad_debug(DEBUG_WARN , "%x %x %x %x \n\r", send[0], send[1], send[2], send[3]);
+                
+            }
+            chThdSleepMilliseconds(200);
+        }
+        i=1;
+    }
+}
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+//-----------------------I2C related  - END  -----------------------------------
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
 int main(void) {
 
     halInit();
@@ -91,15 +81,28 @@ int main(void) {
     quad_debug_init();
     quad_cmd_init();
     disable_wdt();
-    pwmInit();
-  esc_configure();
-	chThdCreateStatic(waThread1, 
-                      sizeof(waThread1), 
-                      NORMALPRIO, 
-                      Thread1, NULL);
+    
+    palSetPadMode(IOPORT2, 27, PAL_MODE_OUTPUT_PUSHPULL);
+    palClearPad(IOPORT2, 27);
 	
-
-    while (1);
+    chThdCreateStatic(i2Test, 
+                  sizeof(i2Test), 
+                  NORMALPRIO+2, 
+                  i2c, NULL);
+                  
+                  
+	chThdCreateStatic(waHB, 
+                      sizeof(waHB), 
+                      LOWPRIO , 
+                      HBTh, NULL);
+    while (1){
+    chThdSleepMilliseconds(5000);
+    }
+    
+    return 0;
 }
+
+
+
 
 
