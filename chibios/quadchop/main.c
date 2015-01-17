@@ -5,14 +5,13 @@
 #include "command.h"
 #include "i2c.h"
 #include "i2c_local.h"
-
+#include "mpu6050.h"
 
 //PWMConfig      pwm_ch0_cfg;
 #define FIXED_FREQUENCY (1000000)
 #define MIN_ESC         (700)
 #define MAX_ESC         (2400)
 #define INC_ESC         (50  )
-
 
 //------------------------------------
 //  Heart beat disaplay  blinks an LED
@@ -28,7 +27,6 @@ static msg_t HBTh(void *arg) {
 	return 0;
 }
 
-
 //------------------------------------
 //  Watchdog disable
 //------------------------------------
@@ -40,22 +38,52 @@ void disable_wdt(void)
 }
 
 
+  int16_t axi16, ayi16, azi16;
+  int16_t gxi16, gyi16, gzi16;
 
-
-static WORKING_AREA(i2Test, 256);
+static WORKING_AREA(i2Test, 512);
 static msg_t i2c(void *arg) {
     int i;
     uint8_t  send[8];
     uint8_t  addr[2] = {0x68, 0x1e};
     i2c_twi1_init();
     int ret;
+    //int scrap;
     int device = 0;
     quad_debug(DEBUG_WARN , "twi init done\n\r");
+    
+    mpu6050Init();
+
+//mpu6050SetGyroXSelfTest(TRUE);
+    //quad_debug(DEBUG_WARN , "Device MPU6050 searching\n\r");
+    
+    if ( mpu6050Test() == TRUE) {
+        quad_debug(DEBUG_WARN , "Device MPU6050 found \n\r");
+        quad_debug(DEBUG_WARN , "Range %f \n\r",  mpu6050GetFullScaleAccelGPL());
+        quad_debug(DEBUG_WARN , "Range %f \n\r",  mpu6050GetFullScaleGyroDPL());
+        mpu6050SelfTest();
+        
+    //for (scrap = 0; scrap < 200; scrap++)
+    //{
+        //mpu6050GetMotion6(&axi16, &ayi16, &azi16, &gxi16, &gyi16, &gzi16);
+        //quad_debug(DEBUG_WARN , "ax-%d, ay-%d, az-%d, gx-%d, gy-%d, gz-%d \n\r",axi16, ayi16, azi16, gxi16, gyi16, gzi16 );
+        //chThdSleepMilliseconds(500);
+    //}
+        
+        
+    } else {
+        quad_debug(DEBUG_WARN , "Device MPU6050  not found \n\r");
+    }
+    
+   
+    while(1) {
+        chThdSleepMilliseconds(200);
+    }
     
     while(1)  {
         for (i=1; i<127; i++){
             device = addr[i%2];
-            ret = i2c_read(device,send, 7);
+            ret = i2c_read_reg(device,0x75,send, 1);
             quad_debug(DEBUG_WARN , "Device %x %s \n\r", device , ret == I2C_ALL_OK ? "Found":"Not Found");
             
             if (ret == I2C_ALL_OK) {
@@ -66,6 +94,7 @@ static msg_t i2c(void *arg) {
         }
         i=1;
     }
+    return 0;
 }
 
 //------------------------------------------------------------------------------

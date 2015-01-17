@@ -26,11 +26,11 @@ typedef struct I2CDriver{
 }I2CDriver;
 
 void i2c_twi1_init (void);
-int32_t i2c_scan(uint8_t addr);
-int32_t i2c_send(uint8_t addr, const uint8_t* sendData, uint8_t sendSz);
-
-int32_t i2c_read(uint8_t addr, const uint8_t* recData, uint8_t recSz);
-
-
+int32_t i2c_scan(uint8_t );
+int32_t i2c_send(uint8_t , const uint8_t* , uint8_t );
+int32_t i2c_read(uint8_t , uint8_t* , uint8_t );
+int32_t i2c_read_reg(uint8_t , uint8_t , uint8_t* , uint8_t );
+int32_t i2c_read_reg_bits(uint8_t , uint8_t , uint8_t , uint8_t , uint8_t *);
+int32_t i2c_write_bit(uint8_t addr, uint8_t reg, uint8_t bit_num, uint8_t data);
 
 #endif

@@ -95,6 +95,7 @@ void i2c_handler( I2CDriver *I2CDev )
         
         if (I2CDev->status == I2C_STAT_LASTREAD) {
             i2cPdcDisable(pTwi);
+            
             pTwi->TWI_IDR = TWI_IDR_RXBUFF;
             pTwi->TWI_IER = TWI_IER_TXCOMP;
 
@@ -105,7 +106,6 @@ void i2c_handler( I2CDriver *I2CDev )
             pTwi->TWI_RPR = I2CDev->lastByte;
             pTwi->TWI_RCR = 1;
             pTwi->TWI_PTCR = TWI_PTCR_RXTEN;
-         
         }
  
     } else if (TWI_SR_TXCOMP & status) {
@@ -180,7 +180,7 @@ i2c_init(I2CDriver *I2CDev )
 void
 i2c_twi1_init ()
 {
-    I2CDev1.frequency = 400000;
+    I2CDev1.frequency = 100000;
         
     //PIO_PB13A_TWCK1
     //PIO_PB12A_TWD1 
@@ -200,7 +200,7 @@ i2c_twi1_init ()
 
 
 
-static int32_t
+static inline int32_t
 i2c_ops (I2CDriver *I2CDev, uint8_t addr, const uint8_t* sendData, uint8_t sendSz, uint8_t* recvData, uint8_t recvSz) 
 {
     Twi *pTwi = I2CDev->pTwi;
@@ -256,7 +256,7 @@ i2c_ops (I2CDriver *I2CDev, uint8_t addr, const uint8_t* sendData, uint8_t sendS
 
         ret = chThdSelf()->p_u.rdymsg;
     
-    } else  {
+    } else if (recvSz > 1) {
         
         pTwi->TWI_RPR = (uint32_t)recvData;
         pTwi->TWI_RCR = recvSz - 1; // Last byte read is handled manually
@@ -264,10 +264,9 @@ i2c_ops (I2CDriver *I2CDev, uint8_t addr, const uint8_t* sendData, uint8_t sendS
         pTwi->TWI_MMR = TWI_MMR_MREAD | (addr << 16);
         pTwi->TWI_CR = TWI_CR_START;
         
-        I2CDev->lastByte = recvData + recvSz - 1;
+        I2CDev->lastByte = recvData[recvSz - 1];
         I2CDev->status = I2C_STAT_BUSY;
         pTwi->TWI_IER = TWI_IER_RXBUFF | TWI_IER_NACK;
-       // quad_debug(DEBUG_WARN , "pTwi->TWI_IMR %x\n\r", pTwi->TWI_IMR);
         
         /* Waits for the operation completion.*/
         I2CDev->thread = chThdSelf();
@@ -299,6 +298,77 @@ i2c_send(uint8_t addr, const uint8_t* sendData, uint8_t sendSz){
 }
 
 int32_t
-i2c_read(uint8_t addr, const uint8_t* recData, uint8_t recSz){
+i2c_read(uint8_t addr,  uint8_t* recData, uint8_t recSz){
     return i2c_ops (&I2CDev1, addr, NULL, 0, recData, recSz); 
 }
+
+inline int32_t
+i2c_read_reg(uint8_t addr, uint8_t reg , uint8_t* rec_data, uint8_t rec_sz)
+{
+    return i2c_ops (&I2CDev1, addr, &reg, 1, rec_data, rec_sz); 
+}
+
+int32_t 
+i2c_read_reg_bits(uint8_t addr, uint8_t reg, uint8_t bit_start, 
+                       uint8_t bit_len, uint8_t *data)
+{
+    bool status=0;
+    uint8_t byte;
+    uint8_t mask = ((1 << bit_len) - 1) << (bit_start - bit_len + 1);
+
+    i2c_read_reg(addr, reg, &byte, 1);
+ 
+    byte &= mask;
+    byte >>= (bit_start - bit_len + 1);
+    *data = byte;
+    
+    return status;
+ }
+ 
+ 
+int32_t 
+i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t data)
+{
+    //uint8_t byte[2];
+    //byte[0] = reg;
+    //byte[1] = data;
+    //return  i2c_send(addr, byte, 2 ); 
+    i2c_send(addr, reg, 1 );
+    i2c_send(addr, data, 1 );
+    return 0;
+    
+}
+
+ 
+int32_t 
+i2c_write_bit(uint8_t addr, uint8_t reg,
+                    uint8_t bit_num, uint8_t data)
+{
+    uint8_t byte;
+    i2c_read_reg(addr, reg, &byte, 1);
+    byte = (data != 0) ? (byte | (1 << bit_num)) : (byte & ~(1 << bit_num));
+    return i2c_write_byte(addr, reg, byte);
+}
+ 
+int32_t
+i2c_write_bits( uint8_t addr, uint8_t reg,
+                uint8_t bit_num, uint8_t bit_len, 
+                uint8_t data)
+{
+    int32_t status;
+    uint8_t byte;
+    uint8_t mask;
+
+    status = i2c_read_reg(addr, reg, &byte, 1);
+    
+    if (status == I2C_ALL_OK) {
+        mask = ((1 << bit_len) - 1) << (bit_num - bit_len + 1);
+        data <<= (bit_num - bit_len + 1); // shift data into correct position
+        data &= mask; // zero all non-important bits in data
+        byte &= ~(mask); // zero all important bits in existing byte
+        byte |= data; // combine data with existing byte
+        status = i2c_write_byte(addr, reg, byte);
+    }
+    return status;      
+}    
+  

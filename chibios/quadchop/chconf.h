@@ -416,7 +416,7 @@
  *          @p panic_msg variable set to @p NULL.
  */
 #if !defined(CH_DBG_ENABLE_STACK_CHECK) || defined(__DOXYGEN__)
-#define CH_DBG_ENABLE_STACK_CHECK       FALSE
+#define CH_DBG_ENABLE_STACK_CHECK       TRUE
 #endif
 
 /**
@@ -531,6 +531,8 @@
 }
 #endif
 
+
+#define 	CHPRINTF_USE_FLOAT   TRUE
 /** @} */
 
 /*===========================================================================*/
