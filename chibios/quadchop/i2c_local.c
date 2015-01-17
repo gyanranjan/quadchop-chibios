@@ -85,8 +85,12 @@ void i2c_handler( I2CDriver *I2CDev )
 
 
     if (TWI_SR_TXBUFE & status) { // Transmit has completed.
-        i2cPdcDisable(pTwi);
-        pTwi->TWI_CR = TWI_CR_STOP;
+        
+        
+        if (I2CDev->rxbytes == 0) {
+            pTwi->TWI_CR = TWI_CR_STOP;
+            i2cPdcDisable(pTwi);
+        }
         pTwi->TWI_IDR = TWI_IDR_TXBUFE;
         pTwi->TWI_IER = TWI_IER_TXCOMP;
 
@@ -180,7 +184,7 @@ i2c_init(I2CDriver *I2CDev )
 void
 i2c_twi1_init ()
 {
-    I2CDev1.frequency = 100000;
+    I2CDev1.frequency = 400000;
         
     //PIO_PB13A_TWCK1
     //PIO_PB12A_TWD1 
@@ -227,6 +231,9 @@ i2c_ops (I2CDriver *I2CDev, uint8_t addr, const uint8_t* sendData, uint8_t sendS
         pTwi->TWI_MMR = (addr << 16);
         pTwi->TWI_IADR = 0;
         pTwi->TWI_IADR = 0;
+        
+        pTwi->TWI_CR = TWI_CR_START;
+        
         pTwi->TWI_PTCR = TWI_PTCR_TXTEN;
         pTwi->TWI_IER = TWI_IER_TXBUFE | TWI_IER_NACK;
         
@@ -326,21 +333,17 @@ i2c_read_reg_bits(uint8_t addr, uint8_t reg, uint8_t bit_start,
  }
  
  
-int32_t 
+inline int32_t 
 i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t data)
 {
-    //uint8_t byte[2];
-    //byte[0] = reg;
-    //byte[1] = data;
-    //return  i2c_send(addr, byte, 2 ); 
-    i2c_send(addr, reg, 1 );
-    i2c_send(addr, data, 1 );
-    return 0;
-    
+    uint8_t byte[2];
+    byte[0] = reg;
+    byte[1] = data;
+    return  i2c_send(addr, byte, 2 ); 
 }
 
  
-int32_t 
+inline int32_t 
 i2c_write_bit(uint8_t addr, uint8_t reg,
                     uint8_t bit_num, uint8_t data)
 {

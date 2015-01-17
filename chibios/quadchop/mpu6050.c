@@ -36,22 +36,15 @@
 #include "i2c_local.h"
 #include "mpu6050.h"
 
-
-
-
-
 static uint8_t devAddr;
 static uint8_t buffer[14];
 static bool isInit;
-
-
 
 /** Default constructor, uses default I2C address.
  * @see MPU6050_DEFAULT_ADDRESS
  */
 void mpu6050Init(void)
 {
-    quad_debug(DEBUG_INFO , "%s \n\r",__func__);
     if (isInit)
         return;
     devAddr = MPU6050_ADDRESS_AD0_LOW;
@@ -59,10 +52,8 @@ void mpu6050Init(void)
     quad_debug(DEBUG_INFO , "%s done \n\r",__func__);
 }
 
-
 bool mpu6050Test(void)
 {
-    quad_debug(DEBUG_INFO , "%s \n\r",__func__);
     bool testStatus;
     if (!isInit)
         return FALSE;
@@ -79,7 +70,6 @@ bool mpu6050TestConnection()
   return mpu6050GetDeviceID() == 0b110100;
 }
 
-
 /** Get Device ID.
  * This register is used to verify the identity of the device (0b110100).
  * @return Device ID (should be 0x68, 104 dec, 150 oct)
@@ -89,13 +79,38 @@ bool mpu6050TestConnection()
  */
 uint8_t mpu6050GetDeviceID()
 {
-    quad_debug(DEBUG_WARN , "Reading device %s\n\r", __func__);
     i2c_read_reg_bits(devAddr, MPU6050_RA_WHO_AM_I , MPU6050_WHO_AM_I_BIT, MPU6050_WHO_AM_I_LENGTH,  buffer);
-    quad_debug(DEBUG_WARN , "Reading device done %s\n\r", __func__);
+    quad_debug(DEBUG_WARN , "%s Device id is %x\n\r", __func__, buffer[0]);
     return (buffer[0]);
 }
 
 
+/** Get sleep mode status.
+ * Setting the SLEEP bit in the register puts the device into very low power
+ * sleep mode. In this mode, only the serial interface and internal registers
+ * remain active, allowing for a very low standby current. Clearing this bit
+ * puts the device back into normal mode. To save power, the individual standby
+ * selections for each of the gyros should be used if any gyro axis is not used
+ * by the application.
+ * @return Current sleep mode enabled status
+ * @see MPU6050_RA_PWR_MGMT_1
+ * @see MPU6050_PWR1_SLEEP_BIT
+ */
+bool mpu6050GetSleepEnabled()
+{
+  i2c_read_reg_bits(devAddr, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_SLEEP_BIT,1, buffer);
+  return buffer[0];
+}
+/** Set sleep mode status.
+ * @param enabled New sleep mode enabled status
+ * @see getSleepEnabled()
+ * @see MPU6050_RA_PWR_MGMT_1
+ * @see MPU6050_PWR1_SLEEP_BIT
+ */
+void mpu6050SetSleepEnabled(bool enabled)
+{
+  i2c_write_bit(devAddr, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_SLEEP_BIT, enabled);
+}
 /** Get full-scale accelerometer range.
  * The FS_SEL parameter allows setting the full-scale range of the accelerometer
  * sensors, as described in the table below.
@@ -117,6 +132,7 @@ uint8_t mpu6050GetFullScaleAccelRangeId(void)
 {
     i2c_read_reg_bits(devAddr, MPU6050_RA_ACCEL_CONFIG, MPU6050_ACONFIG_AFS_SEL_BIT,
                                         MPU6050_ACONFIG_AFS_SEL_LENGTH, buffer);
+    quad_debug(DEBUG_WARN , "range is %d  %s\n\r", buffer[0], __func__);
     return buffer[0];
 }
 
@@ -324,6 +340,39 @@ mpu6050SetAccelZSelfTest(bool enabled)
 }
 
 
+/** Get temperature sensor enabled status.
+ * Control the usage of the internal temperature sensor.
+ *
+ * Note: this register stores the *disabled* value, but for consistency with the
+ * rest of the code, the function is named and used with standard TRUE/FALSE
+ * values to indicate whether the sensor is enabled or disabled, respectively.
+ *
+ * @return Current temperature sensor enabled status
+ * @see MPU6050_RA_PWR_MGMT_1
+ * @see MPU6050_PWR1_TEMP_DIS_BIT
+ */
+bool mpu6050GetTempSensorEnabled()
+{
+  i2c_read_reg_bits( devAddr, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_TEMP_DIS_BIT,1 ,buffer);
+  return buffer[0] == 0; // 1 is actually disabled here
+}
+/** Set temperature sensor enabled status.
+ * Note: this register stores the *disabled* value, but for consistency with the
+ * rest of the code, the function is named and used with standard TRUE/FALSE
+ * values to indicate whether the sensor is enabled or disabled, respectively.
+ *
+ * @param enabled New temperature sensor enabled status
+ * @see getTempSensorEnabled()
+ * @see MPU6050_RA_PWR_MGMT_1
+ * @see MPU6050_PWR1_TEMP_DIS_BIT
+ */
+void mpu6050SetTempSensorEnabled(bool enabled)
+{
+  // 1 is actually disabled here
+  i2c_write_bit(devAddr, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_TEMP_DIS_BIT, !enabled);
+}
+
+
 /** Evaluate the values from a MPU6050 self test.
  * @param low The low limit of the self test
  * @param high The high limit of the self test
@@ -340,6 +389,127 @@ mpu6050EvaluateSelfTest(float low, float high, float value, char* string)
         return FALSE;
     }
     return TRUE;
+}
+
+/** Set full interrupt enabled status.
+ * Full register byte for all interrupts, for quick reading. Each bit should be
+ * set 0 for disabled, 1 for enabled.
+ * @param enabled New interrupt enabled status
+ * @see getIntFreefallEnabled()
+ * @see MPU6050_RA_INT_ENABLE
+ * @see MPU6050_INTERRUPT_FF_BIT
+ **/
+void mpu6050SetIntEnabled(uint8_t enabled)
+{
+  i2c_write_byte(devAddr, MPU6050_RA_INT_ENABLE, enabled);
+}
+
+/** Set I2C bypass enabled status.
+ * When this bit is equal to 1 and I2C_MST_EN (Register 106 bit[5]) is equal to
+ * 0, the host application processor will be able to directly access the
+ * auxiliary I2C bus of the MPU-60X0. When this bit is equal to 0, the host
+ * application processor will not be able to directly access the auxiliary I2C
+ * bus of the MPU-60X0 regardless of the state of I2C_MST_EN (Register 106
+ * bit[5]).
+ * @param enabled New I2C bypass enabled status
+ * @see MPU6050_RA_INT_PIN_CFG
+ * @see MPU6050_INTCFG_I2C_BYPASS_EN_BIT
+ */
+void mpu6050SetI2CBypassEnabled(bool enabled)
+{
+  i2c_write_bit(devAddr, MPU6050_RA_INT_PIN_CFG, MPU6050_INTCFG_I2C_BYPASS_EN_BIT, enabled);
+}
+
+/** Set clock source setting.
+ * An internal 8MHz oscillator, gyroscope based clock, or external sources can
+ * be selected as the MPU-60X0 clock source. When the internal 8 MHz oscillator
+ * or an external source is chosen as the clock source, the MPU-60X0 can operate
+ * in low power modes with the gyroscopes disabled.
+ *
+ * Upon power up, the MPU-60X0 clock source defaults to the internal oscillator.
+ * However, it is highly recommended that the device be configured to use one of
+ * the gyroscopes (or an external clock source) as the clock reference for
+ * improved stability. The clock source can be selected according to the following table:
+ *
+ * <pre>
+ * CLK_SEL | Clock Source
+ * --------+--------------------------------------
+ * 0       | Internal oscillator
+ * 1       | PLL with X Gyro reference
+ * 2       | PLL with Y Gyro reference
+ * 3       | PLL with Z Gyro reference
+ * 4       | PLL with external 32.768kHz reference
+ * 5       | PLL with external 19.2MHz reference
+ * 6       | Reserved
+ * 7       | Stops the clock and keeps the timing generator in reset
+ * </pre>
+ *
+ * @param source New clock source setting
+ * @see getClockSource()
+ * @see MPU6050_RA_PWR_MGMT_1
+ * @see MPU6050_PWR1_CLKSEL_BIT
+ * @see MPU6050_PWR1_CLKSEL_LENGTH
+ */
+void mpu6050SetClockSource(uint8_t source)
+{
+    i2c_write_bits( devAddr, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_CLKSEL_BIT, MPU6050_PWR1_CLKSEL_LENGTH, source);
+}
+
+/** Set full-scale gyroscope range.
+ * @param range New full-scale gyroscope range value
+ * @see getFullScaleRange()
+ * @see MPU6050_GYRO_FS_250
+ * @see MPU6050_RA_GYRO_CONFIG
+ * @see MPU6050_GCONFIG_FS_SEL_BIT
+ * @see MPU6050_GCONFIG_FS_SEL_LENGTH
+ */
+void mpu6050SetFullScaleGyroRange(uint8_t range)
+{
+    i2c_write_bits(devAddr, MPU6050_RA_GYRO_CONFIG, MPU6050_GCONFIG_FS_SEL_BIT, MPU6050_GCONFIG_FS_SEL_LENGTH, range);
+}
+
+
+/** Set full-scale accelerometer range.
+ * @param range New full-scale accelerometer range setting
+ * @see getFullScaleAccelRange()
+ */
+void mpu6050SetFullScaleAccelRange(uint8_t range)
+{
+    i2c_write_bits(devAddr, MPU6050_RA_ACCEL_CONFIG, MPU6050_ACONFIG_AFS_SEL_BIT, MPU6050_ACONFIG_AFS_SEL_LENGTH, range);
+}
+
+/** Set gyroscope sample rate divider.
+ * @param rate New sample rate divider
+ * @see getRate()
+ * @see MPU6050_RA_SMPLRT_DIV
+ */
+void mpu6050SetRate(uint8_t rate)
+{
+  i2c_write_byte(devAddr, MPU6050_RA_SMPLRT_DIV, rate);
+}
+
+/** Set digital low-pass filter configuration.
+ * @param mode New DLFP configuration setting
+ * @see getDLPFBandwidth()
+ * @see MPU6050_DLPF_BW_256
+ * @see MPU6050_RA_CONFIG
+ * @see MPU6050_CFG_DLPF_CFG_BIT
+ * @see MPU6050_CFG_DLPF_CFG_LENGTH
+ */
+void mpu6050SetDLPFMode(uint8_t mode)
+{
+  i2c_write_bits(devAddr, MPU6050_RA_CONFIG, MPU6050_CFG_DLPF_CFG_BIT, MPU6050_CFG_DLPF_CFG_LENGTH, mode);
+}
+
+
+/** Trigger a full device reset.
+ * A small delay of ~50ms may be desirable after triggering a reset.
+ * @see MPU6050_RA_PWR_MGMT_1
+ * @see MPU6050_PWR1_DEVICE_RESET_BIT
+ */
+void mpu6050Reset()
+{
+  i2c_write_bit(devAddr, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_DEVICE_RESET_BIT, 1);
 }
 
 
@@ -367,7 +537,7 @@ bool mpu6050SelfTest()
   for (scrap = 0; scrap < 20; scrap++)
   {
     mpu6050GetMotion6(&axi16, &ayi16, &azi16, &gxi16, &gyi16, &gzi16);
-    chThdSleepMilliseconds(50);
+    chThdSleepMilliseconds(500);
   }
   
 
@@ -394,8 +564,8 @@ bool mpu6050SelfTest()
 
 
   // Wait for self test to take effect
-  chThdSleepMilliseconds(MPU6050_SELF_TEST_DELAY_MS);
-  //vTaskDelay(M2T(MPU6050_SELF_TEST_DELAY_MS));
+  chThdSleepMilliseconds(MPU6050_SELF_TEST_DELAY_MS * 20);
+
   // Take second measurement
   mpu6050GetMotion6(&axi16, &ayi16, &azi16, &gxi16, &gyi16, &gzi16);
   gxfTst = gxi16 * gRange;

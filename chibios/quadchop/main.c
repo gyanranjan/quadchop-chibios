@@ -52,15 +52,27 @@ static msg_t i2c(void *arg) {
     int device = 0;
     quad_debug(DEBUG_WARN , "twi init done\n\r");
     
-    mpu6050Init();
+mpu6050Init();
 
-//mpu6050SetGyroXSelfTest(TRUE);
-    //quad_debug(DEBUG_WARN , "Device MPU6050 searching\n\r");
-    
-    if ( mpu6050Test() == TRUE) {
-        quad_debug(DEBUG_WARN , "Device MPU6050 found \n\r");
-        quad_debug(DEBUG_WARN , "Range %f \n\r",  mpu6050GetFullScaleAccelGPL());
-        quad_debug(DEBUG_WARN , "Range %f \n\r",  mpu6050GetFullScaleGyroDPL());
+
+if ( mpu6050Test() == TRUE) {
+mpu6050Reset();
+chThdSleepMilliseconds(50);
+
+mpu6050SetSleepEnabled(FALSE);
+mpu6050SetTempSensorEnabled(TRUE);
+mpu6050SetIntEnabled(FALSE);
+mpu6050SetI2CBypassEnabled(FALSE);
+mpu6050SetClockSource(MPU6050_CLOCK_PLL_XGYRO);
+mpu6050SetFullScaleGyroRange(MPU6050_GYRO_FS_2000);
+mpu6050SetFullScaleAccelRange(MPU6050_ACCEL_FS_8);
+mpu6050SetRate(15);  // 8000 / (1 + 15) = 500Hz
+mpu6050SetDLPFMode(MPU6050_DLPF_BW_256);
+
+        
+        //quad_debug(DEBUG_WARN , "Device MPU6050 found \n\r");
+        //quad_debug(DEBUG_WARN , "Range %f \n\r",  mpu6050GetFullScaleAccelGPL());
+        //quad_debug(DEBUG_WARN , "Range %f \n\r",  mpu6050GetFullScaleGyroDPL());
         mpu6050SelfTest();
         
     //for (scrap = 0; scrap < 200; scrap++)
@@ -77,7 +89,8 @@ static msg_t i2c(void *arg) {
     
    
     while(1) {
-        chThdSleepMilliseconds(200);
+        mpu6050GetMotion6(&axi16, &ayi16, &azi16, &gxi16, &gyi16, &gzi16);
+        //chThdSleepMilliseconds(200);
     }
     
     while(1)  {

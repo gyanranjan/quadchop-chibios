@@ -41,6 +41,17 @@ float mpu6050GetFullScaleGyroDPL(void);
 bool mpu6050SelfTest(void);
 
 void mpu6050SetGyroXSelfTest(bool enabled);
+void mpu6050Reset(void);
+bool mpu6050GetSleepEnabled(void);
+void mpu6050SetSleepEnabled(bool enabled);
+
+void mpu6050SetTempSensorEnabled(bool enabled);
+bool mpu6050GetTempSensorEnabled(void);
+void mpu6050SetIntEnabled(uint8_t enabled);
+void mpu6050SetI2CBypassEnabled(bool enabled);
+void mpu6050SetFullScaleGyroRange(uint8_t range);
+void mpu6050SetFullScaleAccelRange(uint8_t range);
+void mpu6050SetRate(uint8_t rate);
 
 
 #define MPU6050_ADDRESS_AD0_LOW     0x68 // address pin low (GND), default for InvenSense evaluation board
