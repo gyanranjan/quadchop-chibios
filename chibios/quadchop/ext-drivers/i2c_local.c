@@ -12,7 +12,8 @@
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 
-
+#define MAX_BUFF    (31)
+static uint8_t buffer[MAX_BUFF]; 
 
 #define I2C_STAT_DONE 0
 #define I2C_STAT_LASTREAD 2
@@ -102,8 +103,10 @@ void i2c_handler( I2CDriver *I2CDev )
             
             pTwi->TWI_IDR = TWI_IDR_RXBUFF;
             pTwi->TWI_IER = TWI_IER_TXCOMP;
+            palSetPad(IOPORT2, 27);
 
         } else {
+            palClearPad(IOPORT2, 27);
             I2CDev->status = I2C_STAT_LASTREAD;
             i2cPdcDisable(pTwi);
             pTwi->TWI_CR = TWI_CR_STOP;
@@ -271,7 +274,7 @@ i2c_ops (I2CDriver *I2CDev, uint8_t addr, const uint8_t* sendData, uint8_t sendS
         pTwi->TWI_MMR = TWI_MMR_MREAD | (addr << 16);
         pTwi->TWI_CR = TWI_CR_START;
         
-        I2CDev->lastByte = recvData[recvSz - 1];
+        I2CDev->lastByte = recvData  + recvSz  - 1;
         I2CDev->status = I2C_STAT_BUSY;
         pTwi->TWI_IER = TWI_IER_RXBUFF | TWI_IER_NACK;
         
@@ -332,14 +335,27 @@ i2c_read_reg_bits(uint8_t addr, uint8_t reg, uint8_t bit_start,
     return status;
  }
  
+
+inline int32_t 
+i2c_write(uint8_t addr, uint8_t reg, uint8_t len,  uint8_t *data)
+{
+    //uint8_t byte[2];
+    buffer[0] = reg;
+    if (len > (MAX_BUFF - 1)) {
+        return I2C_ERR_INVAL;
+    }
+    
+    memcpy(&buffer[1], data, len );
+    return  i2c_send(addr, buffer, len+1); 
+}
  
 inline int32_t 
 i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t data)
 {
-    uint8_t byte[2];
-    byte[0] = reg;
-    byte[1] = data;
-    return  i2c_send(addr, byte, 2 ); 
+    //uint8_t byte[2];
+    buffer[0] = reg;
+    buffer[1] = data;
+    return  i2c_send(addr, buffer, 2 ); 
 }
 
  

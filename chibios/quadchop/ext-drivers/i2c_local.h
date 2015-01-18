@@ -13,7 +13,7 @@ typedef struct I2CDriver{
   size_t                    txbytes;
   Mutex                     mutex;
   Thread                    *thread;
-  uint8_t                   lastByte;
+  uint8_t                   *lastByte;
   
   //Below must be initialised
   uint32_t                  peripheral_id;
@@ -33,5 +33,7 @@ int32_t i2c_read_reg(uint8_t , uint8_t , uint8_t* , uint8_t );
 int32_t i2c_read_reg_bits(uint8_t , uint8_t , uint8_t , uint8_t , uint8_t *);
 int32_t i2c_write_bit(uint8_t addr, uint8_t reg, uint8_t bit_num, uint8_t data);
 int32_t i2c_write_bits( uint8_t , uint8_t , uint8_t , uint8_t ,  uint8_t);
+int32_t i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t data);
+int32_t i2c_write(uint8_t addr, uint8_t reg, uint8_t len,  uint8_t *data);
 
 #endif
