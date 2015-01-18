@@ -5,7 +5,7 @@
 #include "command.h"
 #include "i2c.h"
 #include "i2c_local.h"
-#include "mpu6050.h"
+#include "interface.h"
 
 //PWMConfig      pwm_ch0_cfg;
 #define FIXED_FREQUENCY (1000000)
@@ -13,6 +13,8 @@
 #define MAX_ESC         (2400)
 #define INC_ESC         (50  )
 
+
+#define GYRO_RATE 200 
 //------------------------------------
 //  Heart beat disaplay  blinks an LED
 //------------------------------------
@@ -51,29 +53,30 @@ static msg_t i2c(void *arg) {
     //int scrap;
     int device = 0;
     quad_debug(DEBUG_WARN , "twi init done\n\r");
+    ms_open(GYRO_RATE);
     
-mpu6050Init();
+//mpu6050Init();
 
 
-if ( mpu6050Test() == TRUE) {
-mpu6050Reset();
-chThdSleepMilliseconds(50);
+//if ( mpu6050Test() == TRUE) {
+//mpu6050Reset();
+//chThdSleepMilliseconds(50);
 
-mpu6050SetSleepEnabled(FALSE);
-mpu6050SetTempSensorEnabled(TRUE);
-mpu6050SetIntEnabled(FALSE);
-mpu6050SetI2CBypassEnabled(FALSE);
-mpu6050SetClockSource(MPU6050_CLOCK_PLL_XGYRO);
-mpu6050SetFullScaleGyroRange(MPU6050_GYRO_FS_2000);
-mpu6050SetFullScaleAccelRange(MPU6050_ACCEL_FS_8);
-mpu6050SetRate(15);  // 8000 / (1 + 15) = 500Hz
-mpu6050SetDLPFMode(MPU6050_DLPF_BW_256);
+//mpu6050SetSleepEnabled(FALSE);
+//mpu6050SetTempSensorEnabled(TRUE);
+//mpu6050SetIntEnabled(FALSE);
+//mpu6050SetI2CBypassEnabled(FALSE);
+//mpu6050SetClockSource(MPU6050_CLOCK_PLL_XGYRO);
+//mpu6050SetFullScaleGyroRange(MPU6050_GYRO_FS_2000);
+//mpu6050SetFullScaleAccelRange(MPU6050_ACCEL_FS_8);
+//mpu6050SetRate(15);  // 8000 / (1 + 15) = 500Hz
+//mpu6050SetDLPFMode(MPU6050_DLPF_BW_256);
 
         
         //quad_debug(DEBUG_WARN , "Device MPU6050 found \n\r");
         //quad_debug(DEBUG_WARN , "Range %f \n\r",  mpu6050GetFullScaleAccelGPL());
         //quad_debug(DEBUG_WARN , "Range %f \n\r",  mpu6050GetFullScaleGyroDPL());
-        mpu6050SelfTest();
+//        mpu6050SelfTest();
         
     //for (scrap = 0; scrap < 200; scrap++)
     //{
@@ -83,14 +86,15 @@ mpu6050SetDLPFMode(MPU6050_DLPF_BW_256);
     //}
         
         
-    } else {
-        quad_debug(DEBUG_WARN , "Device MPU6050  not found \n\r");
-    }
+    //} else {
+        //quad_debug(DEBUG_WARN , "Device MPU6050  not found \n\r");
+    //}
     
    
     while(1) {
-        mpu6050GetMotion6(&axi16, &ayi16, &azi16, &gxi16, &gyi16, &gzi16);
-        //chThdSleepMilliseconds(200);
+        //mpu6050GetMotion6(&axi16, &ayi16, &azi16, &gxi16, &gyi16, &gzi16);
+        ms_update();
+        chThdSleepMilliseconds(10);
     }
     
     while(1)  {

@@ -76,7 +76,7 @@ CSRC = $(PORTSRC) \
        $(PLATFORMSRC) \
        $(BOARDSRC) \
        $(wildcard *.c) \
-       $(wildcard $(SENSORS)/*.c) \
+       $(wildcard $(SENSORS)/mpu6050/*.c) \
        $(wildcard $(EXTDRIVER)/*.c)\
        
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
@@ -111,7 +111,7 @@ INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
          $(HALINC) $(PLATFORMINC) $(BOARDINC) \
          $(CHIBIOS)/os/various \
          $(EXTDRIVER) \
-         $(SENSORS) \
+         $(SENSORS)/mpu6050 \
          src
 
 FLASHTOOL = $(TOPDIR)/../compiler/bossac
@@ -174,7 +174,7 @@ DINCDIR =
 DLIBDIR =
 
 # List all default libraries here
-DLIBS =
+DLIBS = -lm
 
 #
 # End of default section
