@@ -64,6 +64,9 @@ include $(CHIBIOS)/os/kernel/kernel.mk
 # Define linker script file here
 LDSCRIPT= $(PORTLD)/sam3x8e_flash.ld
 
+EXTDRIVER=./ext-drivers
+SENSORS=./sensors
+
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
 CSRC = $(PORTSRC) \
@@ -72,8 +75,10 @@ CSRC = $(PORTSRC) \
        $(HALSRC) \
        $(PLATFORMSRC) \
        $(BOARDSRC) \
-       $(wildcard *.c)
-
+       $(wildcard *.c) \
+       $(wildcard $(SENSORS)/*.c) \
+       $(wildcard $(EXTDRIVER)/*.c)\
+       
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
 CPPSRC =
@@ -105,6 +110,8 @@ ASMSRC = $(PORTASM)
 INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
          $(HALINC) $(PLATFORMINC) $(BOARDINC) \
          $(CHIBIOS)/os/various \
+         $(EXTDRIVER) \
+         $(SENSORS) \
          src
 
 FLASHTOOL = $(TOPDIR)/../compiler/bossac
